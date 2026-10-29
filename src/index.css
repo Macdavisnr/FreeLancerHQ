@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* Design tokens taken from the FreelanceHQ UI design.
+   Tailwind v4 turns every --color-* variable into utilities,
+   e.g. --color-brand-600 gives bg-brand-600, text-brand-600, border-brand-600. */
+@theme {
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+
+  --color-brand-50: #efeeff;
+  --color-brand-100: #dcdaff;
+  --color-brand-600: #6258ff;
+  --color-brand-700: #4b41e0;
+
+  --color-sidebar: #2b2a6a;
+  --color-sidebar-active: #3d3c87;
+
+  --color-ink: #1a1a3a;
+  --color-muted: #6b6b8a;
+  --color-canvas: #f5f6fb;
+  --color-line: #e8e8f0;
+
+  --color-sun: #ffae1a;
+  --color-coral: #ff6b6b;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
