@@ -6,7 +6,7 @@ const SETTINGS_COLUMNS = `
   currency, invoice_prefix AS "invoicePrefix", payment_terms_days AS "paymentTermsDays",
   invoice_note AS "invoiceNote", notify_invoice_paid AS "notifyInvoicePaid",
   notify_overdue AS "notifyOverdue", notify_weekly AS "notifyWeekly",
-  notify_product AS "notifyProduct"`
+  notify_product AS "notifyProduct", remind_clients_overdue AS "remindClientsOverdue"`
 
 export const SETTINGS_SELECT = SETTINGS_COLUMNS
 
@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS = {
   notifyOverdue: true,
   notifyWeekly: true,
   notifyProduct: false,
+  remindClientsOverdue: false,
 }
 
 export type Settings = typeof DEFAULT_SETTINGS

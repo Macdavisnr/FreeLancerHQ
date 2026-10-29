@@ -33,6 +33,7 @@ const settingsSchema = z.object({
   notifyOverdue: z.boolean(),
   notifyWeekly: z.boolean(),
   notifyProduct: z.boolean(),
+  remindClientsOverdue: z.boolean(),
 })
 
 // GET /api/settings
@@ -54,18 +55,21 @@ settingsRouter.put('/', async (req, res) => {
 
   const { rows } = await pool.query(
     `INSERT INTO user_settings (user_id, business_name, business_email, business_phone, business_address, currency,
-        invoice_prefix, payment_terms_days, invoice_note, notify_invoice_paid, notify_overdue, notify_weekly, notify_product)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        invoice_prefix, payment_terms_days, invoice_note, notify_invoice_paid, notify_overdue, notify_weekly, notify_product,
+        remind_clients_overdue)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      ON CONFLICT (user_id) DO UPDATE SET
         business_name = EXCLUDED.business_name, business_email = EXCLUDED.business_email,
         business_phone = EXCLUDED.business_phone, business_address = EXCLUDED.business_address,
         currency = EXCLUDED.currency, invoice_prefix = EXCLUDED.invoice_prefix,
         payment_terms_days = EXCLUDED.payment_terms_days, invoice_note = EXCLUDED.invoice_note,
         notify_invoice_paid = EXCLUDED.notify_invoice_paid, notify_overdue = EXCLUDED.notify_overdue,
-        notify_weekly = EXCLUDED.notify_weekly, notify_product = EXCLUDED.notify_product, updated_at = now()
+        notify_weekly = EXCLUDED.notify_weekly, notify_product = EXCLUDED.notify_product,
+        remind_clients_overdue = EXCLUDED.remind_clients_overdue, updated_at = now()
      RETURNING ${SETTINGS_SELECT}`,
     [req.userId, s.businessName, s.businessEmail, s.businessPhone, s.businessAddress, s.currency, s.invoicePrefix,
-     s.paymentTermsDays, s.invoiceNote, s.notifyInvoicePaid, s.notifyOverdue, s.notifyWeekly, s.notifyProduct],
+     s.paymentTermsDays, s.invoiceNote, s.notifyInvoicePaid, s.notifyOverdue, s.notifyWeekly, s.notifyProduct,
+     s.remindClientsOverdue],
   )
   res.json({ settings: rows[0], currencyLocked: await isCurrencyLocked(req.userId) })
 })

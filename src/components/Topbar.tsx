@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import NotificationBell from '@/components/NotificationBell'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
@@ -20,13 +21,16 @@ export default function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         placeholder="Search"
         className="w-full max-w-md rounded-xl border border-line bg-white px-4 py-2.5 text-sm outline-none focus:border-brand-600"
       />
-      <Link
-        to="/profile"
-        aria-label="Profile"
-        className="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sun font-bold"
-      >
-        {user?.name.charAt(0).toUpperCase()}
-      </Link>
+      <div className="ml-auto flex shrink-0 items-center gap-3">
+        <NotificationBell />
+        <Link
+          to="/profile"
+          aria-label="Profile"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sun font-bold"
+        >
+          {user?.name.charAt(0).toUpperCase()}
+        </Link>
+      </div>
     </header>
   )
 }

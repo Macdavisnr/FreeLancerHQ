@@ -11,6 +11,8 @@ export interface Settings {
   notifyOverdue: boolean
   notifyWeekly: boolean
   notifyProduct: boolean
+  /** Also email clients a reminder (with the Pay link) when their invoice is overdue */
+  remindClientsOverdue: boolean
 }
 
 /** The "From" block on an invoice. */

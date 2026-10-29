@@ -5,17 +5,20 @@ import { errorHandler } from './errors.js'
 import { authRouter } from './routes/auth.js'
 import { calendarRouter, eventsRouter } from './routes/calendar.js'
 import { clientsRouter } from './routes/clients.js'
+import { cronRouter } from './routes/cron.js'
 import { profileRouter, settingsRouter } from './routes/account.js'
 import { dashboardRouter } from './routes/dashboard.js'
 import { documentsRouter } from './routes/documents.js'
 import { expensesRouter } from './routes/expenses.js'
 import { invoicesRouter, paymentsRouter } from './routes/invoices.js'
+import { notificationsRouter } from './routes/notifications.js'
 import { projectsRouter, tasksRouter } from './routes/projects.js'
 import { paystackSettingsRouter, paystackWebhook } from './routes/paystack.js'
 import { proposalsRouter } from './routes/proposals.js'
 import { publicRouter } from './routes/public.js'
 import { ratesRouter } from './routes/rates.js'
 import { reportsRouter } from './routes/reports.js'
+import { startScheduler } from './scheduler.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 4000)
@@ -45,6 +48,8 @@ app.use('/api/calendar', calendarRouter)
 app.use('/api/events', eventsRouter)
 app.use('/api/documents', documentsRouter)
 app.use('/api/public', publicRouter) // no login: see routes/public.ts
+app.use('/api/notifications', notificationsRouter)
+app.use('/api/cron', cronRouter) // protected by CRON_SECRET, see routes/cron.ts
 app.use('/api/rates', ratesRouter)
 app.use('/api/proposals', proposalsRouter)
 app.use('/api/settings/paystack', paystackSettingsRouter)
@@ -56,4 +61,5 @@ app.use(errorHandler)
 
 app.listen(port, () => {
   console.log(`API listening on http://localhost:${port}`)
+  startScheduler()
 })

@@ -1,5 +1,6 @@
 import { decrypt } from './crypto.js'
 import { pool } from './db.js'
+import { notifyInvoicePaid } from './notifications.js'
 import { getRate } from './rates.js'
 import { getSettings } from './settings.js'
 import { round2 } from './sql.js'
@@ -128,11 +129,14 @@ export async function recordOnlinePayment(tx: PaystackTransaction): Promise<Reco
     )
     await db.query(`UPDATE checkout_sessions SET status = 'paid', paid_at = now() WHERE reference = $1`, [tx.reference])
     await db.query('COMMIT')
-    return 'paid'
   } catch (err) {
     await db.query('ROLLBACK')
     throw err
   } finally {
     db.release()
   }
+  // Only the call that actually recorded the payment gets here, so this runs once per payment.
+  // A failing notification must never undo (or fail) a payment that is already saved.
+  await notifyInvoicePaid(session.invoice_id, amount).catch((err) => console.error('Payment notification failed:', err))
+  return 'paid'
 }

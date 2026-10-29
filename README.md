@@ -15,6 +15,7 @@ All-in-one workspace for freelancers: manage clients, projects, invoices, paymen
 - **Calendar**: month view of meetings, task due dates, project start dates and deadlines, and invoice due dates.
 - **Documents**: upload contracts, briefs and receipts, filed by client and project.
 - **Reports**: revenue, expenses, profit and outstanding payments.
+- **Notifications**: in-app bell, emails when a client pays, staged overdue reminders (1, 7, 14, 30 days, optionally to the client too) and a weekly summary, all run by a deduplicated scheduler.
 - **Accounts**: sign-up verified by a one-time code (email or SMS), login, forgot password, profile and settings.
 
 ## Tech stack
@@ -120,6 +121,8 @@ server/
   src/paystack.ts    Paystack calls and idempotent payment recording
   src/crypto.ts      AES-256-GCM encryption for stored API keys
   src/storage.ts     file storage interface (local disk driver)
+  src/notifications.ts  alerts, emails and the scheduled jobs
+  src/scheduler.ts   hourly timer; /api/cron/run for serverless hosts
 ```
 
 ## Security notes
@@ -132,7 +135,6 @@ server/
 
 ## Roadmap
 
-- Notifications: invoice paid, overdue reminders, weekly summary
 - Deployment (Vercel), cloud file storage, production database
 - Automated tests
 

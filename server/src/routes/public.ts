@@ -7,6 +7,7 @@ import { HttpError } from '../errors.js'
 import { publicInvoiceUrl } from '../invoiceEmail.js'
 import { getConnection, PAYSTACK_CURRENCIES, paystack, PaystackError, recordOnlinePayment, toSubunit, type PaystackTransaction } from '../paystack.js'
 import { checkRateLimit } from '../rateLimit.js'
+import { notifyInvoiceViewed } from '../notifications.js'
 import { getBusiness } from '../settings.js'
 import { PAID_JOIN, STATUS_SQL, toDate } from '../sql.js'
 
@@ -53,7 +54,8 @@ publicRouter.get('/invoices/:token', async (req, res) => {
 
   // The first visit by someone other than the owner counts as "viewed by client".
   if (optionalUserId(req) !== ownerId) {
-    await pool.query('UPDATE invoices SET viewed_at = now() WHERE id = $1 AND viewed_at IS NULL', [invoiceId])
+    const first = await pool.query('UPDATE invoices SET viewed_at = now() WHERE id = $1 AND viewed_at IS NULL', [invoiceId])
+    if (first.rowCount) await notifyInvoiceViewed(invoiceId).catch((err) => console.error('View notification failed:', err))
   }
 
   res.set({

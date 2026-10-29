@@ -369,3 +369,30 @@ CREATE INDEX IF NOT EXISTS checkout_sessions_invoice_idx ON checkout_sessions(in
 -- twice impossible, even if the redirect and the webhook arrive at the same moment.
 -- (NULLs don't clash with each other, so manually recorded payments are unaffected.)
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS provider_reference TEXT UNIQUE;
+
+-- ---------------------------------------------------------------------------
+-- Notifications (Phase 6c).
+-- ---------------------------------------------------------------------------
+
+-- In-app alerts (the bell in the top bar). Some are also emailed, depending on Settings.
+-- dedupe_key: scheduled jobs give each notification a key such as "overdue:<invoice>:7".
+-- The UNIQUE constraint means a second run of the job can't create (or email) it twice:
+-- inserting the row is how a job "claims" the work. NULL keys never clash.
+CREATE TABLE IF NOT EXISTS notifications (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind       TEXT        NOT NULL CHECK (kind IN ('invoice_paid', 'invoice_viewed', 'invoice_overdue', 'weekly_summary')),
+  title      TEXT        NOT NULL,
+  body       TEXT        NOT NULL DEFAULT '',
+  link       TEXT,                          -- where clicking it goes, e.g. /invoices/<id>
+  dedupe_key TEXT,
+  read_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, dedupe_key)
+);
+-- "My latest notifications" and "how many unread" are the two queries the bell makes.
+CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications(user_id, created_at DESC);
+
+-- Opt-in: also email the CLIENT a polite reminder (with the Pay link) when their invoice is overdue.
+-- Off by default: emailing someone's clients is something the freelancer must choose.
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS remind_clients_overdue BOOLEAN NOT NULL DEFAULT false;

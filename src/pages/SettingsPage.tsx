@@ -22,6 +22,7 @@ const NOTIFICATIONS: { key: keyof Settings; label: string }[] = [
   { key: 'notifyInvoicePaid', label: 'Email me when an invoice is paid' },
   { key: 'notifyOverdue', label: 'Remind me about overdue invoices' },
   { key: 'notifyWeekly', label: 'Weekly business summary' },
+  { key: 'remindClientsOverdue', label: 'Email my clients a polite reminder when their invoice is overdue' },
   { key: 'notifyProduct', label: 'Product updates' },
 ]
 
@@ -147,7 +148,7 @@ export default function SettingsPage() {
             </p>
           </Card>
 
-          <Card title="Notifications" subtitle="Choose what you want to hear about. Email delivery arrives in a later phase; your choices are saved for then.">
+          <Card title="Notifications" subtitle="Choose what is emailed. Everything also appears under the bell at the top of the app. Overdue reminders go out 1, 7, 14 and 30 days after the due date.">
             <ul>
               {NOTIFICATIONS.map(({ key, label }) => (
                 <li key={key} className="border-t border-line first:border-0">
