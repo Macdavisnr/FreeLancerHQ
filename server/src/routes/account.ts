@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { Router } from 'express'
 import { z } from 'zod'
-import { requireAuth } from '../auth.js'
+import { requireAuth, signToken } from '../auth.js'
 import { pool } from '../db.js'
 import { HttpError } from '../errors.js'
 import { normalizePhone, PHONE_ERROR } from '../phone.js'
@@ -118,16 +118,16 @@ profileRouter.put('/', async (req, res) => {
   }
 })
 
-// PUT /api/profile/password
+// PUT /api/profile/password  -> logs out every OTHER device; this one gets a fresh token
 profileRouter.put('/password', async (req, res) => {
   const { currentPassword, newPassword } = passwordSchema.parse(req.body)
   const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.userId])
   if (!rows[0] || !(await bcrypt.compare(currentPassword, rows[0].password_hash))) {
     throw new HttpError(400, 'Your current password is incorrect.')
   }
-  await pool.query('UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1', [
-    req.userId,
-    await bcrypt.hash(newPassword, 10),
-  ])
-  res.status(204).end()
+  const updated = await pool.query(
+    'UPDATE users SET password_hash = $2, token_version = token_version + 1, updated_at = now() WHERE id = $1 RETURNING token_version',
+    [req.userId, await bcrypt.hash(newPassword, 10)],
+  )
+  res.json({ token: signToken(req.userId, updated.rows[0].token_version) })
 })

@@ -57,7 +57,7 @@ export default function ProfilePage() {
     try {
       await changePassword(passwords.current, passwords.next)
       setPasswords({ current: '', next: '' })
-      setPasswordMsg({ ok: true, text: 'Password updated.' })
+      setPasswordMsg({ ok: true, text: 'Password updated. Any other devices have been logged out.' })
     } catch (err) {
       setPasswordMsg({ ok: false, text: err instanceof Error ? err.message : 'Could not update password.' })
     } finally {

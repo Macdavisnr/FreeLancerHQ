@@ -410,3 +410,7 @@ CREATE TABLE IF NOT EXISTS rate_limit_hits (
   hit_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS rate_limit_hits_key_idx ON rate_limit_hits(key, hit_at);
+
+-- Every login token carries the user's token_version. Changing or resetting the password adds 1,
+-- and requireAuth rejects tokens with an older number: all existing logins end at once.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;

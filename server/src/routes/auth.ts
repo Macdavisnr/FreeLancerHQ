@@ -208,7 +208,7 @@ authRouter.post('/register/complete', async (req, res) => {
     await db.query('INSERT INTO user_settings (user_id, currency) VALUES ($1, $2)', [user.id, signup.currency])
     await db.query('DELETE FROM signup_verifications WHERE id = $1', [signupId])
     await db.query('COMMIT')
-    res.status(201).json({ token: signToken(user.id), user })
+    res.status(201).json({ token: signToken(user.id, 0), user }) // a new account starts at version 0
   } catch (err) {
     await db.query('ROLLBACK')
     // 23505 = unique violation: somebody registered this email in the meantime
@@ -226,7 +226,7 @@ authRouter.post('/login', async (req, res) => {
   const { email, password } = loginSchema.parse(req.body)
 
   const { rows } = await pool.query(
-    `SELECT ${USER_COLUMNS}, password_hash FROM users WHERE email = $1`,
+    `SELECT ${USER_COLUMNS}, password_hash, token_version FROM users WHERE email = $1`,
     [email],
   )
   const row = rows[0]
@@ -236,8 +236,8 @@ authRouter.post('/login', async (req, res) => {
     throw new HttpError(401, 'Incorrect email or password.')
   }
 
-  const { password_hash: _hash, ...user } = row
-  res.json({ token: signToken(user.id), user })
+  const { password_hash: _hash, token_version: tokenVersion, ...user } = row
+  res.json({ token: signToken(user.id, tokenVersion), user })
 })
 
 // GET /api/auth/me  (protected) - "who am I?", used when the app first loads
@@ -369,13 +369,15 @@ authRouter.post('/password/reset', async (req, res) => {
     )
     if (!used.rowCount) throw new HttpError(400, 'This code has already been used. Please request a new one.')
     // Receiving the code proves they control the email, so mark it verified too.
+    // token_version + 1 logs out every device: whoever had the old password loses access.
     const updated = await db.query(
-      `UPDATE users SET password_hash = $2, email_verified = true, updated_at = now()
-       WHERE id = $1 RETURNING ${USER_COLUMNS}`,
+      `UPDATE users SET password_hash = $2, email_verified = true, token_version = token_version + 1, updated_at = now()
+       WHERE id = $1 RETURNING ${USER_COLUMNS}, token_version`,
       [userId, await bcrypt.hash(password, 10)],
     )
     await db.query('COMMIT')
-    res.json({ token: signToken(userId), user: updated.rows[0] })
+    const { token_version: tokenVersion, ...user } = updated.rows[0]
+    res.json({ token: signToken(userId, tokenVersion), user })
   } catch (err) {
     await db.query('ROLLBACK')
     throw err

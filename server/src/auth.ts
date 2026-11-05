@@ -1,13 +1,17 @@
 import type { Request, RequestHandler } from 'express'
 import jwt from 'jsonwebtoken'
+import { pool } from './db.js'
 import { HttpError } from './errors.js'
 
 const secret = process.env.JWT_SECRET
 if (!secret) throw new Error('JWT_SECRET is not set. Check server/.env')
 
-/** A JWT is a signed note saying "this is user X". The signature stops anyone forging it. */
-export function signToken(userId: string) {
-  return jwt.sign({ sub: userId }, secret!, { expiresIn: '7d' })
+/**
+ * A JWT is a signed note saying "this is user X". The signature stops anyone forging it.
+ * ver = the user's token_version when it was issued (see requireAuth).
+ */
+export function signToken(userId: string, tokenVersion: number) {
+  return jwt.sign({ sub: userId, ver: tokenVersion }, secret!, { expiresIn: '7d' })
 }
 
 /** Short-lived proof that a sign-up's OTP was verified. Only usable to finish THAT sign-up. */
@@ -51,21 +55,33 @@ declare module 'express-serve-static-core' {
  * Middleware that runs BEFORE a protected route.
  * It reads "Authorization: Bearer <token>", verifies the signature, and stores the
  * user's id on the request. No valid token -> 401 and the route never runs.
+ *
+ * A signature alone can't be "taken back": a stolen token would work until it expires. So we
+ * also compare the token's version with the user's current token_version in the database.
+ * A password change bumps that number, and every older token stops working immediately.
+ * (The same lookup also rejects tokens of deleted accounts.)
  */
-export const requireAuth: RequestHandler = (req, _res, next) => {
+export const requireAuth: RequestHandler = async (req, _res, next) => {
   const header = req.headers.authorization
   const token = header?.startsWith('Bearer ') ? header.slice(7) : null
   if (!token) throw new HttpError(401, 'Please log in.')
 
+  let payload: { sub: string; purpose?: string; ver?: number }
   try {
-    const payload = jwt.verify(token, secret!) as { sub: string; purpose?: string }
+    payload = jwt.verify(token, secret!) as typeof payload
     // A sign-up or reset token must never double as a login token.
     if (payload.purpose) throw new Error('not a login token')
-    req.userId = payload.sub
-    next()
   } catch {
     throw new HttpError(401, 'Your session has expired. Please log in again.')
   }
+
+  const { rows } = await pool.query('SELECT token_version FROM users WHERE id = $1', [payload.sub])
+  // Tokens from before versions existed have no "ver": they count as version 0.
+  if (!rows[0] || rows[0].token_version !== (payload.ver ?? 0)) {
+    throw new HttpError(401, 'Your session has expired. Please log in again.')
+  }
+  req.userId = payload.sub
+  next()
 }
 
 /**
