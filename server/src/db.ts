@@ -6,4 +6,9 @@ if (!process.env.DATABASE_URL) {
 }
 
 // A pool keeps a few database connections open and reuses them across requests.
-export const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
+// On Vercel each running copy of the API has its own pool, so idle connections are closed
+// quickly to avoid holding many open at the database (use Neon's "pooled" connection string).
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ...(process.env.VERCEL && { max: 5, idleTimeoutMillis: 5_000 }),
+})

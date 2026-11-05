@@ -2,6 +2,7 @@ import { pool } from './db.js'
 import { appUrl, publicInvoiceUrl } from './invoiceEmail.js'
 import { escapeHtml, sendEmail, type EmailMessage } from './notify.js'
 import { getBusiness, getSettings } from './settings.js'
+import { pruneRateLimits } from './rateLimit.js'
 import { PAID_JOIN } from './sql.js'
 
 /*
@@ -229,9 +230,10 @@ export async function sendWeeklySummaries() {
   return sent
 }
 
-/** Everything the timer runs. Safe to call as often as you like: every step is deduplicated. */
+/** Everything the timer (or cron) runs. Safe to call as often as you like: every step is deduplicated. */
 export async function runScheduledJobs() {
   const overdue = await checkOverdueInvoices()
   const weekly = await sendWeeklySummaries()
+  await pruneRateLimits()
   return { overdue, weekly }
 }

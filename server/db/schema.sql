@@ -396,3 +396,17 @@ CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications(user_
 -- Opt-in: also email the CLIENT a polite reminder (with the Pay link) when their invoice is overdue.
 -- Off by default: emailing someone's clients is something the freelancer must choose.
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS remind_clients_overdue BOOLEAN NOT NULL DEFAULT false;
+
+-- ---------------------------------------------------------------------------
+-- Production (Phase 7).
+-- ---------------------------------------------------------------------------
+
+-- Rate limiting ("at most N payment attempts per 10 minutes"). One row per attempt.
+-- It lives in the database, not in memory, because on serverless hosts many short-lived copies
+-- of the API run at once and only the database is shared by all of them. Old rows are deleted
+-- by the scheduled jobs.
+CREATE TABLE IF NOT EXISTS rate_limit_hits (
+  key    TEXT        NOT NULL,          -- what is being limited, e.g. "pay:<invoice token>"
+  hit_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS rate_limit_hits_key_idx ON rate_limit_hits(key, hit_at);

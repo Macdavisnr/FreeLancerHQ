@@ -115,7 +115,7 @@ proposalsRouter.post('/generate', async (req, res) => {
   // Every call that reaches the AI costs real money, so each person gets a limited number per hour.
   // This check comes AFTER validation: a request that was going to be rejected anyway is not counted.
   const perHour = Number(process.env.AI_PROPOSALS_PER_HOUR) || 10
-  checkRateLimit(`ai-proposal:${req.userId}`, perHour, 60 * 60 * 1000, 'AI proposals this hour')
+  await checkRateLimit(`ai-proposal:${req.userId}`, perHour, 60 * 60 * 1000, 'AI proposals this hour')
 
   const proposal = await generateProposal({
     freelancerName: rows[0].name,

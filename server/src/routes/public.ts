@@ -79,7 +79,7 @@ publicRouter.get('/invoices/:token', async (req, res) => {
 publicRouter.post('/invoices/:token/pay', async (req, res) => {
   const token = req.params.token
   // Each click creates a Paystack transaction: cap it so nobody can spam the freelancer's account.
-  checkRateLimit(`pay:${token}`, 10, 10 * 60_000, 'payment attempts')
+  await checkRateLimit(`pay:${token}`, 10, 10 * 60_000, 'payment attempts')
   const { invoiceId, ownerId, invoice } = await loadPublicInvoice(token)
   if (invoice.balance <= 0) throw new HttpError(409, 'This invoice is already paid.')
   const connection = await getConnection(ownerId)
