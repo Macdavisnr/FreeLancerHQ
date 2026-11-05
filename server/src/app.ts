@@ -9,6 +9,7 @@ import { cronRouter } from './routes/cron.js'
 import { profileRouter, settingsRouter } from './routes/account.js'
 import { dashboardRouter } from './routes/dashboard.js'
 import { documentsRouter } from './routes/documents.js'
+import { localFilesRouter } from './routes/files.js'
 import { expensesRouter } from './routes/expenses.js'
 import { invoicesRouter, paymentsRouter } from './routes/invoices.js'
 import { notificationsRouter } from './routes/notifications.js'
@@ -18,6 +19,7 @@ import { proposalsRouter } from './routes/proposals.js'
 import { publicRouter } from './routes/public.js'
 import { ratesRouter } from './routes/rates.js'
 import { reportsRouter } from './routes/reports.js'
+import { LocalDiskStorage, storage } from './storage.js'
 
 /*
  * The Express app: every route, but no app.listen(). It's separate from index.ts so two
@@ -52,6 +54,8 @@ app.use('/api/reports', reportsRouter)
 app.use('/api/calendar', calendarRouter)
 app.use('/api/events', eventsRouter)
 app.use('/api/documents', documentsRouter)
+// Development stand-in for a bucket's presigned URLs (see routes/files.ts)
+if (storage instanceof LocalDiskStorage) app.use('/api/files', localFilesRouter(storage))
 app.use('/api/public', publicRouter) // no login: see routes/public.ts
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/cron', cronRouter) // protected by CRON_SECRET, see routes/cron.ts

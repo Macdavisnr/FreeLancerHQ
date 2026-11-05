@@ -1,4 +1,4 @@
-import { api, apiBlob } from '@/lib/api'
+import { api } from '@/lib/api'
 import type { Document } from '@/types/document'
 
 export const MAX_FILE_MB = 10
@@ -13,13 +13,28 @@ export async function listDocuments(filter: { clientId?: string; projectId?: str
   return documents
 }
 
-/** Upload one file as multipart/form-data, optionally filed under a client and/or project. */
+/**
+ * Upload one file, optionally filed under a client and/or project. Three steps (see the server's
+ * routes/documents.ts): ask for a presigned upload URL, send the file straight to storage,
+ * then tell the API it arrived.
+ */
 export async function uploadDocument(file: File, links: { clientId?: string | null; projectId?: string | null } = {}) {
-  const form = new FormData()
-  form.append('file', file)
-  if (links.clientId) form.append('clientId', links.clientId)
-  if (links.projectId) form.append('projectId', links.projectId)
-  const { document } = await api<{ document: Document }>('/documents', { method: 'POST', body: form })
+  const { key, uploadUrl, contentType } = await api<{ key: string; uploadUrl: string; contentType: string }>(
+    '/documents/uploads',
+    { method: 'POST', body: { name: file.name, size: file.size, ...links } },
+  )
+  // Plain fetch, NOT api(): api() adds our login token, which must never be sent to another site.
+  let uploaded: Response
+  try {
+    uploaded = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: file })
+  } catch {
+    throw new Error('The upload failed. Check your connection and try again.')
+  }
+  if (!uploaded.ok) throw new Error('The upload failed. Please try again.')
+  const { document } = await api<{ document: Document }>('/documents', {
+    method: 'POST',
+    body: { key, name: file.name, ...links },
+  })
   return document
 }
 
@@ -27,28 +42,21 @@ export async function deleteDocument(id: string): Promise<void> {
   await api<void>(`/documents/${id}`, { method: 'DELETE' })
 }
 
-/*
- * Types that are safe to open in a browser tab. A blob: URL runs with OUR site's permissions,
- * so anything that could contain script (HTML, SVG) must never be opened this way; the server
- * doesn't accept those anyway, and this list is a second line of defence.
- */
+/** Types the server lets the browser display. Others are offered as downloads only. */
 const PREVIEWABLE = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'text/plain'])
 export const canPreview = (doc: Document) => PREVIEWABLE.has(doc.mimeType)
 
-async function fileUrl(doc: Document) {
-  const blob = await apiBlob(`/documents/${doc.id}/download`)
-  // Re-wrap with the type we trust, rather than whatever the response claimed.
-  return URL.createObjectURL(new Blob([blob], { type: doc.mimeType }))
+/** A link to the file that works for about a minute; the server checks the document is ours first. */
+async function fileLink(doc: Document, inline: boolean) {
+  const { url } = await api<{ url: string }>(`/documents/${doc.id}/link${inline ? '?inline=1' : ''}`)
+  return url
 }
 
-/** Save the file to the computer under its original name. */
+/** Save the file to the computer. The link is served as an "attachment", so the page stays put. */
 export async function downloadDocument(doc: Document) {
-  const url = await fileUrl(doc)
   const link = document.createElement('a')
-  link.href = url
-  link.download = doc.name
+  link.href = await fileLink(doc, false)
   link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 10_000) // free the memory once the download has started
 }
 
 /**
@@ -58,10 +66,9 @@ export async function downloadDocument(doc: Document) {
 export async function previewDocument(doc: Document) {
   const tab = window.open('', '_blank')
   try {
-    const url = await fileUrl(doc)
+    const url = await fileLink(doc, true)
     if (tab) tab.location.href = url
     else window.location.href = url
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
   } catch (err) {
     tab?.close()
     throw err

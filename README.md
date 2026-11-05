@@ -23,9 +23,9 @@ All-in-one workspace for freelancers: manage clients, projects, invoices, paymen
 | Layer | Tools |
 | --- | --- |
 | Front end | React 19, TypeScript, Vite, Tailwind CSS 4, React Router |
-| Back end | Node.js, Express 5, Zod (validation), JWT (auth), Multer (uploads) |
+| Back end | Node.js, Express 5, Zod (validation), JWT (auth) |
 | Database | PostgreSQL (`pg`, plain SQL) |
-| Integrations | Paystack (payments), SMTP via Nodemailer (email), Twilio (SMS), Anthropic Claude (AI proposals), ExchangeRate-API (currency rates) |
+| Integrations | Cloudflare R2 via the S3 API (files), Paystack (payments), SMTP via Nodemailer (email), Twilio (SMS), Anthropic Claude (AI proposals), ExchangeRate-API (currency rates) |
 
 ## How it fits together
 
@@ -35,7 +35,7 @@ React app (src/)  ──fetch /api/*──▶  Express API (server/src/)  ──
       │                                   ├──▶ Paystack API      (start / verify payments)
       │                                   ◀── Paystack webhooks  (signed, verified)
       │                                   ├──▶ SMTP / Twilio     (emails, one-time codes)
-      │                                   └──▶ File storage      (documents; local disk in dev)
+      │                                   └──▶ File storage      (presigned URLs; R2 in production, disk in dev)
       └── public pages (/i/:token) need no login
 ```
 
@@ -120,7 +120,7 @@ server/
   src/routes/        one router per area (clients, invoices, public, paystack...)
   src/paystack.ts    Paystack calls and idempotent payment recording
   src/crypto.ts      AES-256-GCM encryption for stored API keys
-  src/storage.ts     file storage interface (local disk driver)
+  src/storage.ts     file storage: local disk (dev) or S3/R2, presigned URLs
   src/notifications.ts  alerts, emails and the scheduled jobs
   src/scheduler.ts   hourly timer; /api/cron/run for serverless hosts
 ```
@@ -130,7 +130,8 @@ server/
 - Passwords are hashed with bcrypt; one-time codes are stored only as keyed hashes.
 - Payment-provider secret keys are encrypted at rest (AES-256-GCM) and never sent back to the browser.
 - Paystack webhooks are verified with HMAC-SHA512 signatures; payment amounts are checked against what the server requested.
-- Uploads: allow-listed file types, a size limit, random storage keys, always served as downloads.
+- Uploads: allow-listed file types, a size limit, random storage keys. Files go straight between the browser and storage through presigned URLs that expire within minutes; only safe types (PDF, images, text) may be previewed, everything else is downloaded.
+- Changing or resetting a password ends every other login (token versioning).
 - Public invoice links use 256-bit random tokens and reveal nothing about other data.
 
 ## Roadmap
